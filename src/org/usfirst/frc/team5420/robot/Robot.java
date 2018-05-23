@@ -1,9 +1,19 @@
 package org.usfirst.frc.team5420.robot;
 
-import edu.wpi.first.wpilibj.SampleRobot;
+
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.SpeedControllerGroup;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.VictorSP;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.drive.RobotDriveBase;
 
 /**
  * This is a demo program showing the use of the RobotDrive class, specifically
@@ -20,25 +30,79 @@ import edu.wpi.first.wpilibj.Timer;
  * be much more difficult under this system. Use IterativeRobot or Command-Based
  * instead if you're new.
  */
-public class Robot extends SampleRobot {
-	RobotDrive myRobot = new RobotDrive(0, 1); // class that handles basic drive
-												// operations
-	Joystick leftStick = new Joystick(0); // set to ID 1 in DriverStation
-	Joystick rightStick = new Joystick(1); // set to ID 2 in DriverStation
-
-	public Robot() {
-		myRobot.setExpiration(0.1);
+public class Robot extends TimedRobot {
+	
+	public static Talon FL = new Talon(4);
+	public static Talon FR = new Talon(1);
+	public static Talon BL = new Talon(3);
+	public static Talon BR = new Talon(2);
+	public static SpeedControllerGroup m_left = new SpeedControllerGroup(FL, BL);
+	public static SpeedControllerGroup m_right = new SpeedControllerGroup(FR, BR);
+	public static DifferentialDrive m_drive = new DifferentialDrive(m_left, m_right);
+	
+	Timer timer = new Timer();
+	public static Solenoid solenoid0;
+	public static Solenoid solenoid1;
+	public static Encoder encoder1;
+	public static Compressor compressor0;
+	public static Joystick joystick0;
+	public static Joystick joystick1;
+	public static DigitalInput UpperLimit;
+	public static DigitalInput LowerLimit;
+	public static VictorSP LiftMotor;
+	
+	public void robotInit() {
+		encoder1 = new Encoder(6,7,false,Encoder.EncodingType.k4X);
+		compressor0 = new Compressor(0);
+		joystick0 = new Joystick(0);
+		joystick1 = new Joystick(1);
+		solenoid0 = new Solenoid(2);
+		solenoid1 = new Solenoid(3);
+		UpperLimit = new DigitalInput(0);
+		LowerLimit = new DigitalInput(9);
+		LiftMotor = new VictorSP(6); 
+		//pin 4 pushButton
+	}
+	
+	private void putToConsole(String value){
+		System.out.println(value);
 	}
 
-	/**
-	 * Runs the motors with tank steering.
-	 */
+	
 	@Override
-	public void operatorControl() {
-		myRobot.setSafetyEnabled(true);
-		while (isOperatorControl() && isEnabled()) {
-			myRobot.tankDrive(leftStick, rightStick);
-			Timer.delay(0.005); // wait for a motor update time
+	public void teleopInit() {
+		System.out.println("Running Tele-op!");
+	}
+	
+	public void teleopPeriodic() {
+		m_drive.arcadeDrive(-(joystick0.getRawAxis(1)), joystick0.getRawAxis(4));
+		
+		// Controls Lift 
+		double yValue = joystick1.getRawAxis(1);
+		if (yValue < 0 && UpperLimit.get() == false) { 
+			putToConsole("Upper Limit has been triggered");
+			LiftMotor.set(yValue); //sets value anyway?
+		}
+		
+		else if (yValue > 0 && LowerLimit.get() == false) {
+			putToConsole("Lower Limit has been triggered");
+			LiftMotor.set(yValue);
+		}
+		else {
+			putToConsole("Set to Zero has been triggered");
+			LiftMotor.set(0);
+		}
+		
+		//Claw Control (Normally Open)
+		if(joystick1.getRawButton(1)) {
+			putToConsole("Claw Close Triggered");
+			solenoid0.set(true);
+			solenoid1.set(false);
+		}
+		else {
+			putToConsole("Claw Open Triggered");
+			solenoid0.set(false);
+			solenoid1.set(true);
 		}
 	}
 }
