@@ -13,7 +13,7 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.drive.RobotDriveBase;
+import edu.wpi.first.wpilibj.DigitalInput;
 
 /**
  * This is a demo program showing the use of the RobotDrive class, specifically
@@ -50,6 +50,7 @@ public class Robot extends TimedRobot {
 	public static DigitalInput UpperLimit;
 	public static DigitalInput LowerLimit;
 	public static VictorSP LiftMotor;
+	public static DigitalInput StopButton;
 	
 	public void robotInit() {
 		encoder1 = new Encoder(6,7,false,Encoder.EncodingType.k4X);
@@ -61,7 +62,10 @@ public class Robot extends TimedRobot {
 		UpperLimit = new DigitalInput(0);
 		LowerLimit = new DigitalInput(9);
 		LiftMotor = new VictorSP(6); 
-		//pin 4 pushButton
+		StopButton = new DigitalInput(4);
+		
+		
+		m_drive.setDeadband(0.04);
 	}
 	
 	private void putToConsole(String value){
@@ -75,34 +79,43 @@ public class Robot extends TimedRobot {
 	}
 	
 	public void teleopPeriodic() {
-		m_drive.arcadeDrive(-(joystick0.getRawAxis(1)), joystick0.getRawAxis(4));
 		
-		// Controls Lift 
-		double yValue = joystick1.getRawAxis(1);
-		if (yValue < 0 && UpperLimit.get() == false) { 
-			putToConsole("Upper Limit has been triggered");
-			LiftMotor.set(yValue); //sets value anyway?
-		}
-		
-		else if (yValue > 0 && LowerLimit.get() == false) {
-			putToConsole("Lower Limit has been triggered");
-			LiftMotor.set(yValue);
+		// This will disable all robot Actions when pushed.
+		if( StopButton.get() ) {	
+			m_drive.arcadeDrive(-(joystick0.getRawAxis(1))*0.6 , joystick0.getRawAxis(4)*0.8 );
+			
+			// Controls Lift 
+			double yValue = joystick1.getRawAxis(1);
+			if (yValue < 0 && UpperLimit.get() == false) { 
+				putToConsole("Upper Limit has been triggered");
+				LiftMotor.set(yValue); //sets value anyway?
+			}
+			
+			else if (yValue > 0 && LowerLimit.get() == false) {
+				putToConsole("Lower Limit has been triggered");
+				LiftMotor.set(yValue);
+			}
+			else {
+				putToConsole("Set to Zero has been triggered");
+				LiftMotor.set(0);
+			}
+			
+			//Claw Control (Normally Open)
+			if(joystick1.getRawButton(1)) {
+				putToConsole("Claw Close Triggered");
+				solenoid0.set(true);
+				solenoid1.set(false);
+			}
+			else {
+				putToConsole("Claw Open Triggered");
+				solenoid0.set(false);
+				solenoid1.set(true);
+			}
 		}
 		else {
-			putToConsole("Set to Zero has been triggered");
-			LiftMotor.set(0);
+			putToConsole("Stop Motors by Human Input");
+			m_drive.stopMotor();
 		}
 		
-		//Claw Control (Normally Open)
-		if(joystick1.getRawButton(1)) {
-			putToConsole("Claw Close Triggered");
-			solenoid0.set(true);
-			solenoid1.set(false);
-		}
-		else {
-			putToConsole("Claw Open Triggered");
-			solenoid0.set(false);
-			solenoid1.set(true);
-		}
 	}
 }
